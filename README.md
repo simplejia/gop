@@ -5,7 +5,6 @@
 ## 特性
 * history record（gop启动后会在home目录下生成.gop文件夹， 输入历史会记录在此）
 * tab complete，可以补全package，补全库函数，需要系统安装有[gocode](http://github.com/nsf/gocode), 如果之前就安装过gocode，如果发现不能自动补全，请执行`go get -u github.com/nsf/gocode`升级重新安装下
-* r|w两种模式切换，r是默认模式，对用户输入实时解析运行，执行w命令切换到w模式，w模式下，只有当执行run命令时，代码才会真正执行
 * 代码实时查看和编辑功能[!命令功能]
 * snippet，可以导入和导出模板[<,>命令功能]
 
@@ -35,10 +34,6 @@ Commands:
         <tmpl   source tmpl
         >tmpl   write tmpl
         [#](...)        add def or code
-        run     run source
-        compile compile source
-        w       write source mode on
-        r       write source mode off
         reset   reset
         list    tmpl list
 [r]$ for i:=1; i<3; i++ {
