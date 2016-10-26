@@ -242,25 +242,6 @@ func execAlias(w *Workspace, line string) string {
 }
 
 func execSpecial(w *Workspace, line string) bool {
-	if line == "compile" {
-		if err := compile(w); err != nil {
-			fmt.Println("Compile error:", err)
-		}
-		return true
-	}
-	if line == "run" {
-		if err := compile(w); err != nil {
-			fmt.Println("Compile error:", err)
-			return true
-		}
-		outBuf, errBuf, err := run()
-		if err != nil {
-			fmt.Println("Run error:", err)
-		}
-		fmt.Print(outBuf)
-		fmt.Print(errBuf)
-		return true
-	}
 	if strings.HasPrefix(line, ">") {
 		file := strings.Trim(line[1:], " ")
 		if file != "" {
@@ -715,9 +696,6 @@ func dispatch(w *Workspace, line string) (notComplete bool, err error) {
 		fmt.Println("\t<tmpl\tsource tmpl")
 		fmt.Println("\t>tmpl\twrite tmpl")
 		fmt.Println("\t[#](...)\tadd def or code")
-
-		fmt.Println("\trun\trun source")
-		fmt.Println("\tcompile\tcompile source")
 		fmt.Println("\treset\treset")
 		fmt.Println("\tlist\ttmpl list")
 	case '-':
