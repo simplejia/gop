@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
@@ -617,56 +618,44 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 		return
 	}
 
-	sep1 := "imported and not used: "
-	sep2 := "undefined: "
 	var outBuf, errBuf *bytes.Buffer
 	err = compile(w)
 	if err == nil {
 		goto run
 	}
 
-	if strings.Contains(err.Error(), sep1) {
-		for _, line := range strings.Split(err.Error(), "\n") {
-			pos := strings.Index(line, sep1)
-			if pos == -1 {
-				continue
-			}
-			s := strings.Split(line[pos+len(sep1):], " as ")
-			name, value := "<nil>", s[0]
-			if len(s) == 2 {
-				name = s[1]
-			}
-			for pos, pkg := range w.pkgs {
-				v_j := pkg.(*ast.GenDecl).Specs[0].(*ast.ImportSpec)
-				if v_j.Path.Value == value &&
-					v_j.Name.String() == name {
-					w.pkgs = append(w.pkgs[:pos], w.pkgs[pos+1:]...)
-					w.pkgs_notimport = append(w.pkgs_notimport, pkg)
-					break
-				}
-			}
+	for _, arr := range regexp.MustCompile(`imported and not used: (".+?")( as (.+))?`).FindAllStringSubmatch(err.Error(), -1) {
+		name, value := arr[3], arr[1]
+		if name == "" {
+			name = "<nil>"
 		}
-		err = compile(w)
-		if err == nil {
-			goto run
+		for pos, pkg := range w.pkgs {
+			v_j := pkg.(*ast.GenDecl).Specs[0].(*ast.ImportSpec)
+			if v_j.Path.Value == value &&
+				v_j.Name.String() == name {
+				w.pkgs = append(w.pkgs[:pos], w.pkgs[pos+1:]...)
+				w.pkgs_notimport = append(w.pkgs_notimport, pkg)
+				break
+			}
 		}
 	}
 
-	if strings.Contains(err.Error(), sep2) {
-		for pos := len(w.pkgs_notimport) - 1; pos >= 0; pos-- {
-			w.pkgs = append(w.pkgs, w.pkgs_notimport[pos])
-			w.pkgs_notimport = append(w.pkgs_notimport[:pos], w.pkgs_notimport[pos+1:]...)
-			err = compile(w)
-			if err == nil {
-				goto run
-			}
-			if strings.Contains(err.Error(), sep1) {
-				w.pkgs_notimport = append(w.pkgs_notimport[:pos],
-					append([]interface{}{w.pkgs[len(w.pkgs)-1]},
-						w.pkgs_notimport[pos:]...)...)
-				w.pkgs = w.pkgs[:len(w.pkgs)-1]
+	for _, arr := range regexp.MustCompile(`undefined: (.+?) `).FindAllStringSubmatch(err.Error(), -1) {
+		name := arr[1]
+		for pos, pkg := range w.pkgs_notimport {
+			v_j := pkg.(*ast.GenDecl).Specs[0].(*ast.ImportSpec)
+			if v_j.Name.String() == name ||
+				regexp.MustCompile(`["|/]`+name+`"`).MatchString(v_j.Path.Value) {
+				w.pkgs_notimport = append(w.pkgs_notimport[:pos], w.pkgs_notimport[pos+1:]...)
+				w.pkgs = append(w.pkgs, pkg)
+				break
 			}
 		}
+	}
+
+	err = compile(w)
+	if err == nil {
+		goto run
 	}
 
 	goto restore
