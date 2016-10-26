@@ -24,8 +24,7 @@ import (
 )
 
 var (
-	home  = filepath.Join(os.Getenv("HOME"), ".gop")
-	wmode = false
+	home = filepath.Join(os.Getenv("HOME"), ".gop")
 )
 
 func cmd(name string, args ...string) (outBuf, errBuf *bytes.Buffer, err error) {
@@ -301,30 +300,17 @@ func execSpecial(w *Workspace, line string) bool {
 			}
 		}
 
-		bkup_pkgs := append([]interface{}(nil), w.pkgs...)
-		bkup_pkgs_notimport := append([]interface{}(nil), w.pkgs_notimport...)
-		bkup_codes := append([]interface{}(nil), w.codes...)
-		bkup_defs := append([]interface{}(nil), w.defs...)
-		bkup_files := w.files
-		bkup_wmode := wmode
-
 		w.pkgs = nil
 		w.pkgs_notimport = nil
 		w.codes = nil
 		w.defs = nil
-		wmode = true
 		tmpline := ""
 		for _, line := range strings.Split(string(bs), "\n") {
 			tmpline += line + "\n"
-			notComplete, err := parseGo(w, tmpline)
+			notComplete, err := parseGo4import(w, tmpline)
 			if err != nil {
 				fmt.Println("ParseGo error:", err)
-				w.pkgs = bkup_pkgs
-				w.pkgs_notimport = bkup_pkgs_notimport
-				w.codes = bkup_codes
-				w.defs = bkup_defs
-				w.files = bkup_files
-				goto end
+				break
 			}
 			if notComplete {
 				continue
@@ -332,17 +318,6 @@ func execSpecial(w *Workspace, line string) bool {
 			tmpline = ""
 		}
 		sourceDefaultDPC(w)
-
-	end:
-		wmode = bkup_wmode
-		return true
-	}
-	if line == "w" { // For writing to source only
-		wmode = true
-		return true
-	}
-	if line == "r" { // For running in repl mode
-		wmode = false
 		return true
 	}
 	if line == "reset" {
@@ -538,20 +513,18 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 			pos = len(w.codes)
 		}
 		for i := len(v) - 1; i >= 0; i-- {
-			if !wmode {
-				if v_i, ok := v[i].(*ast.AssignStmt); ok {
-					if v_i.Tok == token.DEFINE {
-						for _, name_i := range v_i.Lhs {
-							str_i := new(bytes.Buffer)
-							printer.Fprint(str_i, w.files, name_i)
-							if str_i.String() == "_" {
-								continue
-							}
-							tree, _ := parseStmtList(w.files, "gop", "_ = "+str_i.String())
-							w.codes = append(w.codes, nil)
-							copy(w.codes[pos+1:], w.codes[pos:])
-							w.codes[pos] = tree[0]
+			if v_i, ok := v[i].(*ast.AssignStmt); ok {
+				if v_i.Tok == token.DEFINE {
+					for _, name_i := range v_i.Lhs {
+						str_i := new(bytes.Buffer)
+						printer.Fprint(str_i, w.files, name_i)
+						if str_i.String() == "_" {
+							continue
 						}
+						tree, _ := parseStmtList(w.files, "gop", "_ = "+str_i.String())
+						w.codes = append(w.codes, nil)
+						copy(w.codes[pos+1:], w.codes[pos:])
+						w.codes[pos] = tree[0]
 					}
 				}
 			}
@@ -611,10 +584,6 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 		}
 	default:
 		err = errors.New("Fatal error: Unknown tree type.")
-		return
-	}
-
-	if wmode {
 		return
 	}
 
@@ -678,6 +647,53 @@ restore:
 	return
 }
 
+func parseGo4import(w *Workspace, line string) (notComplete bool, err error) {
+	var tree interface{}
+	tree, err = parseDeclList(w.files, "gop", line[0:])
+	if err != nil {
+		tree, err = parseStmtList(w.files, "gop", line[0:])
+		if err != nil {
+			if _, ok := err.(scanner.ErrorList); ok {
+				err = nil
+				notComplete = true
+			}
+			return
+		}
+	}
+
+	switch v := tree.(type) {
+	case []ast.Stmt:
+		for _, e := range v {
+			w.codes = append(w.codes, e)
+		}
+	case []ast.Decl:
+		for _, e := range v {
+			if v_i, ok := e.(*ast.GenDecl); ok {
+				if v_i.Tok == token.IMPORT {
+					for _, spec := range v_i.Specs {
+						name := spec.(*ast.ImportSpec).Name.String()
+						value := spec.(*ast.ImportSpec).Path.Value
+						var tree []ast.Decl
+						if spec.(*ast.ImportSpec).Name == nil {
+							tree, _ = parseDeclList(w.files, "gop", "import "+value)
+						} else {
+							tree, _ = parseDeclList(w.files, "gop", "import "+name+" "+value)
+						}
+						w.pkgs = append(w.pkgs, tree[0])
+					}
+					continue
+				}
+			}
+			w.defs = append(w.defs, e)
+		}
+	default:
+		err = errors.New("Fatal error: Unknown tree type.")
+		return
+	}
+
+	return
+}
+
 func dispatch(w *Workspace, line string) (notComplete bool, err error) {
 	line = execAlias(w, line)
 	if line == "" {
@@ -702,8 +718,6 @@ func dispatch(w *Workspace, line string) (notComplete bool, err error) {
 
 		fmt.Println("\trun\trun source")
 		fmt.Println("\tcompile\tcompile source")
-		fmt.Println("\tw\twrite source mode on")
-		fmt.Println("\tr\twrite source mode off")
 		fmt.Println("\treset\treset")
 		fmt.Println("\tlist\ttmpl list")
 	case '-':
@@ -729,13 +743,10 @@ func main() {
 	fmt.Println("Welcome to the Go Partner! [version: 1.7, created by simplejia]")
 	fmt.Println("Enter '?' for a list of commands.")
 
-	ws := [2]*Workspace{}
-	for i := 0; i < len(ws); i++ {
-		ws[i] = &Workspace{
-			files: token.NewFileSet(),
-		}
-		sourceDefaultDPC(ws[i])
+	w := &Workspace{
+		files: token.NewFileSet(),
 	}
+	sourceDefaultDPC(w)
 
 	ifTmplExist, tmplFile := true, "gop.tmpl"
 	if _, err := os.Stat(filepath.Join(home, tmplFile)); os.IsNotExist(err) {
@@ -744,9 +755,7 @@ func main() {
 		}
 	}
 	if ifTmplExist {
-		for _, w := range ws {
-			dispatch(w, "<"+tmplFile)
-		}
+		dispatch(w, "<"+tmplFile)
 	}
 
 	rl := newContLiner()
@@ -776,20 +785,9 @@ func main() {
 	}()
 
 	for {
-		w := ws[0]
-		if wmode {
-			w = ws[1]
-		}
 		rl.SetWordCompleter(w.completeWord)
 
-		PS1 := ""
-		if wmode {
-			PS1 = PS1 + "[w]"
-		} else {
-			PS1 = PS1 + "[r]"
-		}
-		PS1 = PS1 + "$ "
-
+		PS1 := "$ "
 		in, err := rl.Prompt(PS1)
 		if err != nil {
 			if err == io.EOF {
