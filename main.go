@@ -765,7 +765,7 @@ func main() {
 	for {
 		rl.SetWordCompleter(w.completeWord)
 
-		PS1 := "$ "
+		PS1 := "GOP$ "
 		in, err := rl.Prompt(PS1)
 		if err != nil {
 			if err == io.EOF {
