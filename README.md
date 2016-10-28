@@ -26,7 +26,7 @@ var println = utils.IprintD
 $ gop
 Welcome to the Go Partner! [[version: 1.7, created by simplejia]
 Enter '?' for a list of commands.
-[r]$ ?
+GOP$ ?
 Commands:
         ?|help  help menu
         -[dpc][#],[#]-[#],...   pop last/specific (declaration|package|code)
@@ -36,26 +36,26 @@ Commands:
         [#](...)        add def or code
         reset   reset
         list    tmpl list
-[r]$ for i:=1; i<3; i++ {
+GOP$ for i:=1; i<3; i++ {
 .....    print(i)
 .....    time.Sleep(time.Millisecond)
 .....}
 1
 2
-[r]$ import _ "github.com/simplejia/wsp/demo/mysql"
-[r]$ import _ "github.com/simplejia/wsp/demo/redis"
-[r]$ import _ "github.com/simplejia/wsp/demo/conf"
-[r]$ import "github.com/simplejia/lc"
-[r]$ import "github.com/simplejia/wsp/demo/service"
-[r]$ lc.Init(1024)
-[r]$ demoService := service.NewDemo()
-[r]$ demoService.Set("123", "456")
-[r]$ time.Sleep(time.Millisecond)
-[r]$ echo demoService.Get("123")
+GOP$ import _ "github.com/simplejia/wsp/demo/mysql"
+GOP$ import _ "github.com/simplejia/wsp/demo/redis"
+GOP$ import _ "github.com/simplejia/wsp/demo/conf"
+GOP$ import "github.com/simplejia/lc"
+GOP$ import "github.com/simplejia/wsp/demo/service"
+GOP$ lc.Init(1024)
+GOP$ demoService := service.NewDemo()
+GOP$ demoService.Set("123", "456")
+GOP$ time.Sleep(time.Millisecond)
+GOP$ echo demoService.Get("123")
 456
-[r]$ >gop
-[r]$ <gop
-[r]$ !
+GOP$ >gop
+GOP$ <gop
+GOP$ !
         package main
 
 p0:     import _ "github.com/simplejia/wsp/demo/mysql"
@@ -78,7 +78,7 @@ c3:             demoService.Set("123", "456")
 c4:             time.Sleep(time.Millisecond)
         }
 
-[r]$
+GOP$
 ```
 
 ## LICENSE
