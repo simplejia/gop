@@ -243,7 +243,7 @@ func execAlias(w *Workspace, line string) string {
 
 func execSpecial(w *Workspace, line string) bool {
 	if strings.HasPrefix(line, ">") {
-		file := strings.Trim(line[1:], " ")
+		file := strings.TrimSpace(line[1:])
 		if file != "" {
 			file = filepath.Join(home, file)
 			if !strings.HasSuffix(file, ".tmpl") {
@@ -254,7 +254,7 @@ func execSpecial(w *Workspace, line string) bool {
 		return true
 	}
 	if strings.HasPrefix(line, "<") {
-		file := strings.Trim(line[1:], " ")
+		file := strings.TrimSpace(line[1:])
 		if file == "" {
 			fmt.Println("No file specified for include.")
 			return true
@@ -340,31 +340,26 @@ func execSpecial(w *Workspace, line string) bool {
 
 func removeByIndex(w *Workspace, cmd_args string) {
 	if len(cmd_args) == 0 {
-		fmt.Println("Error: args is empty")
+		fmt.Println("Error: no item specified for remove")
 		return
 	}
 
 	item_type := cmd_args[0]
-	item_list_len := map[uint8]int{
+	item_list_len := map[byte]int{
 		'd': len(w.defs) + 1,
 		'p': len(w.pkgs) + len(w.pkgs_notimport) + 1,
 		'c': len(w.codes) + 1,
 	}[item_type] - 1
-	item_name := map[uint8]string{
-		'd': "declarations",
-		'p': "packages",
-		'c': "codes",
-	}[item_type]
 
 	if item_list_len == -1 {
-		fmt.Printf("Remove: Invalid item type '%c'\n", item_type)
+		fmt.Printf("Error: invalid item type '%c'\n", item_type)
 		return
 	}
 	if item_list_len == 0 {
-		fmt.Printf("Remove: no more %s to remove\n", item_name)
+		fmt.Printf("Error: no more '%c' to remove\n", item_type)
 		return
 	}
-	items_to_remove := getIndices(item_list_len, cmd_args)
+	items_to_remove := getIndices(item_list_len, cmd_args[1:])
 
 	switch item_type {
 	case 'd':
@@ -382,31 +377,29 @@ func removeByIndex(w *Workspace, cmd_args string) {
 		removeSlice(&w.pkgs_notimport, items4notimport)
 	case 'c':
 		removeSlice(&w.codes, items_to_remove)
-	default:
-		fmt.Printf("Fatal error: Invalid item type '%c'\n", item_type)
-		return
 	}
 }
 
 func getIndices(item_list_len int, cmd_args string) []bool {
 	items_to_remove := make([]bool, item_list_len)
 
-	if len(cmd_args) == 1 {
+	cmd_args = strings.TrimSpace(cmd_args)
+	if len(cmd_args) == 0 {
 		items_to_remove[item_list_len-1] = true
 		return items_to_remove
 	}
 
 	item_indices := []string{}
-	for _, vi := range strings.Split(cmd_args[1:], ",") {
+	for _, vi := range strings.Split(cmd_args, ",") {
 		if vj := strings.Split(vi, "-"); len(vj) == 2 {
 			i, err := strconv.Atoi(vj[0])
 			if err != nil {
-				fmt.Printf("Remove: %s not integer\n", vj[0])
+				fmt.Printf("Error: %s not integer\n", vj[0])
 				continue
 			}
 			j, err := strconv.Atoi(vj[1])
 			if err != nil {
-				fmt.Printf("Remove: %s not integer\n", vj[1])
+				fmt.Printf("Error: %s not integer\n", vj[1])
 				continue
 			}
 			for k := i; k <= j; k++ {
@@ -423,11 +416,11 @@ func getIndices(item_list_len int, cmd_args string) []bool {
 		}
 		item_index, err := strconv.Atoi(item_index_str)
 		if err != nil {
-			fmt.Printf("Remove: %s not integer\n", item_index_str)
+			fmt.Printf("Error: %s not integer\n", item_index_str)
 			continue
 		}
 		if item_index < 0 || item_index >= item_list_len {
-			fmt.Printf("Remove: %d out of range\n", item_index)
+			fmt.Printf("Error: %d out of range\n", item_index)
 			continue
 		}
 		items_to_remove[item_index] = true
@@ -437,8 +430,7 @@ func getIndices(item_list_len int, cmd_args string) []bool {
 }
 
 func removeSlice(ps interface{}, removes []bool) {
-	rpsPtr := reflect.ValueOf(ps)
-	rps := rpsPtr.Elem()
+	rps := reflect.Indirect(reflect.ValueOf(ps))
 	num := rps.Len()
 	if num == 0 {
 		return
@@ -466,7 +458,7 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 		if err != nil {
 			return
 		}
-		line = strings.Trim(line[idx:], " ")
+		line = strings.TrimSpace(line[idx:])
 	}
 
 	var tree interface{}
@@ -685,7 +677,7 @@ func dispatch(w *Workspace, line string) (notComplete bool, err error) {
 		return
 	}
 
-	cmd_args := strings.Trim(line[1:], " ")
+	cmd_args := strings.TrimSpace(line[1:])
 
 	switch line[0] {
 	case '?':
@@ -699,10 +691,6 @@ func dispatch(w *Workspace, line string) (notComplete bool, err error) {
 		fmt.Println("\treset\treset")
 		fmt.Println("\tlist\ttmpl list")
 	case '-':
-		if len(cmd_args) == 0 {
-			err = errors.New("No item specified for removal.")
-			return
-		}
 		removeByIndex(w, cmd_args)
 	case '!':
 		if cmd_args == "!" {
