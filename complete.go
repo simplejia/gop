@@ -14,7 +14,7 @@ import (
 	"github.com/motemen/gore/gocode"
 )
 
-func completeImport(w *Workspace, prefix string) []string {
+func completeImport(prefix string) []string {
 	result := []string{}
 	seen := map[string]bool{}
 
@@ -66,7 +66,7 @@ func completeImport(w *Workspace, prefix string) []string {
 	return result
 }
 
-func completeTmpl(w *Workspace, prefix string) (result []string) {
+func completeTmpl(prefix string) (result []string) {
 	entries, err := ioutil.ReadDir(home)
 	if err != nil {
 		fmt.Printf("ReadDir %s: %s\n", home, err)
@@ -120,7 +120,7 @@ func (w *Workspace) completeWord(line string, pos int) (string, []string, string
 		i := strings.Index(line, "\"")
 		if i != -1 {
 			if pos > i {
-				return line[:i+1], completeImport(w, line[i+1:pos]), line[pos:]
+				return line[:i+1], completeImport(line[i+1 : pos]), line[pos:]
 			}
 		}
 	}
@@ -130,7 +130,7 @@ func (w *Workspace) completeWord(line string, pos int) (string, []string, string
 			i := strings.Index(line, cmdPrefix)
 			if i != -1 {
 				if pos > i {
-					return line[:i+1], completeTmpl(w, line[i+1:pos]), line[pos:]
+					return line[:i+1], completeTmpl(line[i+1 : pos]), line[pos:]
 				}
 			}
 		}

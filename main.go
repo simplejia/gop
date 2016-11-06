@@ -438,7 +438,7 @@ func removeSlice(ps interface{}, removes []bool) {
 
 	rpsNew := reflect.MakeSlice(rps.Type(), 0, 0)
 	for i := 0; i < num; i++ {
-		if i >= len(removes) || removes[i] {
+		if i < len(removes) && removes[i] {
 			continue
 		}
 		rpsNew = reflect.Append(rpsNew, rps.Index(i))
