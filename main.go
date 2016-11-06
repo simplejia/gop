@@ -253,7 +253,7 @@ func execSpecial(w *Workspace, line string) bool {
 		}
 		return true
 	}
-	if strings.HasPrefix(line, "<") {
+	if strings.HasPrefix(line, "<") && !strings.HasPrefix(line, "<-") {
 		file := strings.TrimSpace(line[1:])
 		if file == "" {
 			fmt.Println("No file specified for include.")
