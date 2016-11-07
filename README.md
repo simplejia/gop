@@ -12,6 +12,7 @@
 * 输入代码时，支持续行
 * 对于如下代码，只会在执行结束后一并输出
 > print(1);time.Sleep(time.Second);print(2)
+
 * 可以通过echo 123这种方式输出, echo是println的简写，你甚至可以重新定义println变量来使用自己的打印方法，比如像我这样定义(utils.IprintD的特点是可以打印出指针指向的实际内容，就算是嵌套的指针也可以，fmt.Printf做不到)：
 ```
 import "github.com/simplejia/utils"
