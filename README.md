@@ -1,4 +1,93 @@
 # [gop](http://github.com/simplejia/gop) (go REPL)
+## Original Intention
+* Sometimes when we want to verify a go function quickly, coding in a file is too inefficient. While we have gop, opening a shell environment immediately, it will save the context automatically and enable you to import or export snippet at any time. In addition, it also can complete the code automatically and so on.
+
+## Features
+* history record: when gop is started, it will generate .gop folder under your home directory where inputting history is recorded.
+* tab complete: when you tap tab, it can complete package and function which needs [gocode](http://github.com/nsf/gocode), if you have already installed gocode in your server but it can not work well, please run`go get -u github.com/nsf/gocode` to update it and install it again.
+* It enables you to view code in real time and edit code [! command]
+* snippet: import and export template [<,> command]
+
+## Installation
+> go get -u github.com/simplejia/gop
+
+## Notice：
+* When you input code, it supports continued line
+* For the following code, the whole messages will output together when the executing is over
+> print(1);time.Sleep(time.Second);print(2)
+
+* You can input `echo 123`, echo is alias of println，You can redefine println variable to use your own print method, for example, defining println as the following: (utils.IprintD is characterized by printing the actual content of a pointer, even if the pointer is nested, fmt.printf can not do that)
+```
+import "github.com/simplejia/utils"
+var println = utils.IprintD 
+```
+* When you import project package, you had better install package file to pkg directory in advance via go install which can accelerate the executing.
+* You can import package in advance and atomically import it in subsequent use
+* When gop is started, it will automatically import template code such as $PWD/gop.tmpl or $HOME/.gop/gop.tmpl, you can save your frequently-used code to gop.tmpl
+
+## demo
+```
+$ gop
+Welcome to the Go Partner! [[version: 1.7, created by simplejia]
+Enter '?' for a list of commands.
+GOP$ ?
+Commands:
+        ?|help  help menu
+        -[dpc][#],[#]-[#],...   pop last/specific (declaration|package|code)
+        ![!]    inspect source [with linenum]
+        <tmpl   source tmpl
+        >tmpl   write tmpl
+        [#](...)        add def or code
+        reset   reset
+        list    tmpl list
+GOP$ for i:=1; i<3; i++ {
+.....    print(i)
+.....    time.Sleep(time.Millisecond)
+.....}
+1
+2
+GOP$ import _ "github.com/simplejia/wsp/demo/mysql"
+GOP$ import _ "github.com/simplejia/wsp/demo/redis"
+GOP$ import _ "github.com/simplejia/wsp/demo/conf"
+GOP$ import "github.com/simplejia/lc"
+GOP$ import "github.com/simplejia/wsp/demo/service"
+GOP$ lc.Init(1024)
+GOP$ demoService := service.NewDemo()
+GOP$ demoService.Set("123", "456")
+GOP$ time.Sleep(time.Millisecond)
+GOP$ echo demoService.Get("123")
+456
+GOP$ >gop
+GOP$ <gop
+GOP$ !
+        package main
+
+p0:     import _ "github.com/simplejia/wsp/demo/mysql"
+p1:     import _ "github.com/simplejia/wsp/demo/redis"
+p2:     import _ "github.com/simplejia/wsp/demo/conf"
+p3:     import "github.com/simplejia/lc"
+p4:     import "github.com/simplejia/wsp/demo/service"
+p5:     import "fmt" // imported and not used
+p6:     import "strconv" // imported and not used
+p7:     import "strings" // imported and not used
+p8:     import "time" // imported and not used
+p9:     import "encoding/json" // imported and not used
+p10:    import "bytes" // imported and not used
+
+        func main() {
+c0:             lc.Init(1024)
+c1:             demoService := service.NewDemo()
+c2:             _ = demoService
+c3:             demoService.Set("123", "456")
+c4:             time.Sleep(time.Millisecond)
+        }
+
+GOP$
+```
+
+---
+
+# [gop](http://github.com/simplejia/gop) (go REPL)
 ## 实现初衷
 * 有时想快速验证go某个函数的使用，临时写个程序太低效，有了gop，立马开一个shell环境，边写边运行，自动为你保存上下文，还可随时导入导出snippet，另外还有代码自动补全等等特性
 
