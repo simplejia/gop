@@ -75,6 +75,7 @@ type Workspace struct {
 	defs           []interface{}
 	codes          []interface{}
 	files          *token.FileSet
+	args           string
 }
 
 func (w *Workspace) source(print_dpc, print_linenums, print_notimport bool) string {
@@ -172,9 +173,13 @@ func compile(w *Workspace) (err error) {
 	return
 }
 
-func run() (outBuf, errBuf *bytes.Buffer, err error) {
-	filePrefix := filepath.Join(home, "gop")
-	outBuf, errBuf, err = cmd(filePrefix, filePrefix)
+func run(w *Workspace) (outBuf, errBuf *bytes.Buffer, err error) {
+	file := filepath.Join(home, "gop")
+	matchs := regexp.MustCompile(`-?\w+|".*?[^\\"]"`).FindAllString(w.args, -1)
+	for n, match := range matchs {
+		matchs[n] = strings.Replace(strings.Trim(match, "\""), `\"`, `"`, -1)
+	}
+	outBuf, errBuf, err = cmd(file, matchs...)
 	if err != nil {
 		return
 	}
@@ -235,10 +240,16 @@ func execAlias(w *Workspace, line string) string {
 	if line == "help" {
 		return "?"
 	}
-	if p := "echo "; strings.HasPrefix(line, p) {
-		return "println(" + line[len(p):] + ")"
+
+	sps := []string{}
+	for _, sp := range strings.Split(line, "\n") {
+		if p := "echo "; strings.HasPrefix(sp, p) {
+			sps = append(sps, "println("+sp[len(p):]+")")
+		} else {
+			sps = append(sps, sp)
+		}
 	}
-	return line
+	return strings.Join(sps, "\n")
 }
 
 func execSpecial(w *Workspace, line string) bool {
@@ -333,6 +344,16 @@ func execSpecial(w *Workspace, line string) bool {
 		for pos, tmpl := range tmpls {
 			fmt.Printf("%d\t%s\n", pos, tmpl)
 		}
+		return true
+	}
+	if p := "set "; strings.HasPrefix(line, p) &&
+		!strings.HasPrefix(line, p+"=") &&
+		!strings.HasPrefix(line, p+":=") {
+		w.args = strings.TrimSpace(line[len(p):])
+		return true
+	}
+	if line == "get" {
+		fmt.Printf("%s\n", w.args)
 		return true
 	}
 	return false
@@ -603,7 +624,7 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 	goto restore
 
 run:
-	outBuf, errBuf, err = run()
+	outBuf, errBuf, err = run(w)
 	fmt.Print(outBuf)
 	fmt.Print(errBuf)
 	if err != nil || outBuf.Len() > 0 || errBuf.Len() > 0 {
@@ -668,6 +689,8 @@ func parseGo4import(w *Workspace, line string) (notComplete bool, err error) {
 }
 
 func dispatch(w *Workspace, line string) (notComplete bool, err error) {
+	line = strings.TrimSpace(line)
+
 	line = execAlias(w, line)
 	if line == "" {
 		return
@@ -676,8 +699,6 @@ func dispatch(w *Workspace, line string) (notComplete bool, err error) {
 	if execSpecial(w, line) {
 		return
 	}
-
-	cmd_args := strings.TrimSpace(line[1:])
 
 	switch line[0] {
 	case '?':
@@ -690,9 +711,12 @@ func dispatch(w *Workspace, line string) (notComplete bool, err error) {
 		fmt.Println("\t[#](...)\tadd def or code")
 		fmt.Println("\treset\treset")
 		fmt.Println("\tlist\ttmpl list")
+		fmt.Println("\tset|get\tset or get command-line argument")
 	case '-':
+		cmd_args := strings.TrimSpace(line[1:])
 		removeByIndex(w, cmd_args)
 	case '!':
+		cmd_args := strings.TrimSpace(line[1:])
 		if cmd_args == "!" {
 			fmt.Println(w.source(true, true, true))
 		} else {

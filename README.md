@@ -40,6 +40,7 @@ Commands:
         [#](...)        add def or code
         reset   reset
         list    tmpl list
+        set|get set or get command-line argument
 GOP$ for i:=1; i<3; i++ {
 .....    print(i)
 .....    time.Sleep(time.Millisecond)
@@ -129,6 +130,7 @@ Commands:
         [#](...)        add def or code
         reset   reset
         list    tmpl list
+        set|get set or get command-line argument
 GOP$ for i:=1; i<3; i++ {
 .....    print(i)
 .....    time.Sleep(time.Millisecond)
