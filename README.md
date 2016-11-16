@@ -1,3 +1,6 @@
+[中文 README](#中文)
+
+
 # [gop](http://github.com/simplejia/gop) (go REPL)
 ## Original Intention
 * Sometimes when we want to verify a go function quickly, coding in a file is too inefficient. While we have gop, opening a shell environment immediately, it will save the context automatically and enable you to import or export snippet at any time. In addition, it also can complete the code automatically and so on.
@@ -87,6 +90,8 @@ GOP$
 ```
 
 ---
+中文
+===
 
 # [gop](http://github.com/simplejia/gop) (go REPL)
 ## 实现初衷
