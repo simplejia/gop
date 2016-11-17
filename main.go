@@ -346,14 +346,14 @@ func execSpecial(w *Workspace, line string) bool {
 		}
 		return true
 	}
-	if p := "set "; strings.HasPrefix(line, p) &&
+	if line == "arg" {
+		fmt.Printf("%s\n", w.args)
+		return true
+	}
+	if p := "arg "; strings.HasPrefix(line, p) &&
 		!strings.HasPrefix(line, p+"=") &&
 		!strings.HasPrefix(line, p+":=") {
 		w.args = strings.TrimSpace(line[len(p):])
-		return true
-	}
-	if line == "get" {
-		fmt.Printf("%s\n", w.args)
 		return true
 	}
 	return false
@@ -711,7 +711,7 @@ func dispatch(w *Workspace, line string) (notComplete bool, err error) {
 		fmt.Println("\t[#](...)\tadd def or code")
 		fmt.Println("\treset\treset")
 		fmt.Println("\tlist\ttmpl list")
-		fmt.Println("\tset|get\tset or get command-line argument")
+		fmt.Println("\targ\tset or get command-line argument")
 	case '-':
 		cmd_args := strings.TrimSpace(line[1:])
 		removeByIndex(w, cmd_args)
