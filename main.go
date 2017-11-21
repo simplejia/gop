@@ -603,7 +603,7 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 		}
 	}
 
-	for _, arr := range regexp.MustCompile(`undefined: (.+?) `).FindAllStringSubmatch(err.Error(), -1) {
+	for _, arr := range regexp.MustCompile(`undefined: (.+)`).FindAllStringSubmatch(err.Error(), -1) {
 		name := arr[1]
 		for pos, pkg := range w.pkgs_notimport {
 			v_j := pkg.(*ast.GenDecl).Specs[0].(*ast.ImportSpec)
