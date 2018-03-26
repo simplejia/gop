@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"unicode"
@@ -160,12 +161,18 @@ func (w *Workspace) source(print_dpc, print_linenums, print_notimport bool) stri
 }
 
 func compile(w *Workspace) (err error) {
-	filePrefix := filepath.Join(home, "gop")
-	ioutil.WriteFile(filePrefix+".go", []byte(w.source(false, false, false)), 0644)
+	file := filepath.Join(home, "gop.go")
+	ioutil.WriteFile(file, []byte(w.source(false, false, false)), 0644)
 
+	out := ""
+	if runtime.GOOS == "windows" {
+		out = "gop.exe"
+	} else {
+		out = "gop"
+	}
 	args := []string{}
 	args = append(args, "build")
-	args = append(args, "-o", filePrefix, filePrefix+".go")
+	args = append(args, "-o", out, file)
 	_, _, err = cmd("go", args...)
 	if err != nil {
 		return
