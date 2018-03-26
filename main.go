@@ -170,6 +170,8 @@ func compile(w *Workspace) (err error) {
 	} else {
 		out = "gop"
 	}
+	out = filepath.Join(home, out)
+
 	args := []string{}
 	args = append(args, "build")
 	args = append(args, "-o", out, file)
