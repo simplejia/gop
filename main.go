@@ -15,59 +15,20 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"reflect"
 	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"unicode"
 )
 
 var (
 	home = filepath.Join(os.Getenv("HOME"), ".gop")
 )
-
-func cmd(name string, args ...string) (outBuf, errBuf *bytes.Buffer, err error) {
-	outBuf = new(bytes.Buffer)
-	errBuf = new(bytes.Buffer)
-
-	defer func() {
-		if err != nil {
-			msg := ""
-			if outBuf.Len() > 0 {
-				msg += "[stdout]\n" + outBuf.String()
-			}
-			if errBuf.Len() > 0 {
-				msg += "[stderr]\n" + errBuf.String()
-			}
-			err = fmt.Errorf("ret: %v, msg: %v", err, msg)
-			return
-		}
-	}()
-
-	cmd := exec.Command(name, args...)
-	cmdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return
-	}
-	cmderr, err := cmd.StderrPipe()
-	if err != nil {
-		return
-	}
-	err = cmd.Start()
-	if err != nil {
-		return
-	}
-	io.Copy(outBuf, cmdout)
-	io.Copy(errBuf, cmderr)
-	err = cmd.Wait()
-	if err != nil {
-		return
-	}
-
-	return
-}
 
 // Workspace is the main struct for gop
 type Workspace struct {
@@ -175,23 +136,61 @@ func compile(w *Workspace) (err error) {
 	args := []string{}
 	args = append(args, "build")
 	args = append(args, "-o", out, file)
-	_, _, err = cmd("go", args...)
+	stdoutStderr, err := exec.Command("go", args...).CombinedOutput()
 	if err != nil {
+		if len(stdoutStderr) > 0 {
+			err = fmt.Errorf("%s", stdoutStderr)
+		}
 		return
 	}
+
 	return
 }
 
-func run(w *Workspace) (outBuf, errBuf *bytes.Buffer, err error) {
+func run(w *Workspace) (hasOutput bool, err error) {
 	file := filepath.Join(home, "gop")
 	matchs := regexp.MustCompile(`-?\w+|".*?[^\\"]"`).FindAllString(w.args, -1)
 	for n, match := range matchs {
 		matchs[n] = strings.Replace(strings.Trim(match, "\""), `\"`, `"`, -1)
 	}
-	outBuf, errBuf, err = cmd(file, matchs...)
+
+	outBuf := new(bytes.Buffer)
+	errBuf := new(bytes.Buffer)
+
+	cmd := exec.Command(file, matchs...)
+	cmdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return
 	}
+	cmderr, err := cmd.StderrPipe()
+	if err != nil {
+		return
+	}
+
+	stdout := io.MultiWriter(os.Stdout, outBuf)
+	stderr := io.MultiWriter(os.Stderr, errBuf)
+
+	err = cmd.Start()
+	if err != nil {
+		return
+	}
+
+	go func() {
+		io.Copy(stdout, cmdout)
+	}()
+	go func() {
+		io.Copy(stderr, cmderr)
+	}()
+
+	err = cmd.Wait()
+	if err != nil {
+		return
+	}
+
+	if outBuf.Len() > 0 || errBuf.Len() > 0 {
+		hasOutput = true
+	}
+
 	return
 }
 
@@ -590,7 +589,8 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 		return
 	}
 
-	var outBuf, errBuf *bytes.Buffer
+	var hasOutput bool
+
 	err = compile(w)
 	if err == nil {
 		goto run
@@ -633,10 +633,8 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 	goto restore
 
 run:
-	outBuf, errBuf, err = run(w)
-	fmt.Print(outBuf)
-	fmt.Print(errBuf)
-	if err != nil || outBuf.Len() > 0 || errBuf.Len() > 0 {
+	hasOutput, err = run(w)
+	if err != nil || hasOutput {
 		goto restore
 	}
 	return
@@ -741,6 +739,14 @@ func dispatch(w *Workspace, line string) (notComplete bool, err error) {
 func main() {
 	fmt.Println("Welcome to the Go Partner! [version: 1.7, created by simplejia]")
 	fmt.Println("Enter '?' for a list of commands.")
+
+	go func() {
+		signalChan := make(chan os.Signal)
+		signal.Notify(signalChan, syscall.SIGINT)
+		for {
+			<-signalChan
+		}
+	}()
 
 	w := &Workspace{
 		files: token.NewFileSet(),
