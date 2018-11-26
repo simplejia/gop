@@ -94,7 +94,7 @@ func completeTmpl(prefix string) (result []string) {
 func completeCode(source, in string, pos int) (keep int, candidates []string, err error) {
 	p := strings.LastIndex(source, "}")
 	if p == -1 {
-		err = errors.New("Unexpected error!")
+		err = errors.New("unexpected error")
 		return
 	}
 	editingSource := source[0:p] + in[:pos] + source[p:]

@@ -32,43 +32,43 @@ var (
 
 // Workspace is the main struct for gop
 type Workspace struct {
-	pkgs           []interface{}
-	pkgs_notimport []interface{}
-	defs           []interface{}
-	codes          []interface{}
-	files          *token.FileSet
-	args           string
+	pkgs          []interface{}
+	pkgsNotimport []interface{}
+	defs          []interface{}
+	codes         []interface{}
+	files         *token.FileSet
+	args          string
 }
 
-func (w *Workspace) source(print_dpc, print_linenums, print_notimport bool) string {
+func (w *Workspace) source(printDpc, printLinenums, printNotimport bool) string {
 	source := ""
-	if print_dpc {
+	if printDpc {
 		source += "\t"
 	}
 	source += "package main\n\n"
 
-	pkgs_num := 0
+	pkgsNum := 0
 	for _, v := range w.pkgs {
 		str := new(bytes.Buffer)
 		printer.Fprint(str, w.files, v)
 
-		if print_dpc {
-			source += "p" + strconv.Itoa(pkgs_num) + ":\t"
+		if printDpc {
+			source += "p" + strconv.Itoa(pkgsNum) + ":\t"
 		}
 		source += str.String() + "\n"
-		pkgs_num++
+		pkgsNum++
 	}
 
-	if print_notimport {
-		for _, v := range w.pkgs_notimport {
+	if printNotimport {
+		for _, v := range w.pkgsNotimport {
 			str := new(bytes.Buffer)
 			printer.Fprint(str, w.files, v)
 
-			if print_dpc {
-				source += "p" + strconv.Itoa(pkgs_num) + ":\t"
+			if printDpc {
+				source += "p" + strconv.Itoa(pkgsNum) + ":\t"
 			}
 			source += str.String() + " // imported and not used\n"
-			pkgs_num++
+			pkgsNum++
 		}
 	}
 
@@ -78,7 +78,7 @@ func (w *Workspace) source(print_dpc, print_linenums, print_notimport bool) stri
 		str := new(bytes.Buffer)
 		printer.Fprint(str, w.files, v)
 
-		if print_dpc {
+		if printDpc {
 			source += "d" + strconv.Itoa(pos) + ":\t"
 			source += strings.Join(strings.Split(str.String(), "\n"), "\n\t")
 		} else {
@@ -87,7 +87,7 @@ func (w *Workspace) source(print_dpc, print_linenums, print_notimport bool) stri
 		source += "\n\n"
 	}
 
-	if print_dpc {
+	if printDpc {
 		source += "\t"
 	}
 	source += "func main() {\n"
@@ -96,7 +96,7 @@ func (w *Workspace) source(print_dpc, print_linenums, print_notimport bool) stri
 		str := new(bytes.Buffer)
 		printer.Fprint(str, w.files, v)
 
-		if print_dpc {
+		if printDpc {
 			source += "c" + strconv.Itoa(pos) + ":\t"
 			source += "\t" + strings.Join(strings.Split(str.String(), "\n"), "\n\t\t")
 		} else {
@@ -105,12 +105,12 @@ func (w *Workspace) source(print_dpc, print_linenums, print_notimport bool) stri
 		source += "\n"
 	}
 
-	if print_dpc {
+	if printDpc {
 		source += "\t"
 	}
 	source += "}\n"
 
-	if print_linenums {
+	if printLinenums {
 		newsource := ""
 		for line, item := range strings.Split(source, "\n") {
 			newsource += strconv.Itoa(line+1) + "\t" + item + "\n"
@@ -229,9 +229,9 @@ func sourceDefaultDPC(w *Workspace) {
 	} {
 		if func() bool {
 			for _, pkg := range w.pkgs {
-				v_j := pkg.(*ast.GenDecl).Specs[0].(*ast.ImportSpec)
-				if v_j.Path.Value == "\""+value+"\"" &&
-					v_j.Name.String() == "<nil>" {
+				v := pkg.(*ast.GenDecl).Specs[0].(*ast.ImportSpec)
+				if v.Path.Value == "\""+value+"\"" &&
+					v.Name == nil {
 					return true
 				}
 			}
@@ -240,7 +240,7 @@ func sourceDefaultDPC(w *Workspace) {
 			continue
 		}
 		tree, _ := parseDeclList(w.files, "gop", "import \""+value+"\"")
-		w.pkgs_notimport = append(w.pkgs_notimport, tree[0])
+		w.pkgsNotimport = append(w.pkgsNotimport, tree[0])
 	}
 }
 
@@ -301,7 +301,7 @@ func execSpecial(w *Workspace, line string) bool {
 		}
 
 		w.pkgs = nil
-		w.pkgs_notimport = nil
+		w.pkgsNotimport = nil
 		w.codes = nil
 		w.defs = nil
 		tmpline := ""
@@ -322,7 +322,7 @@ func execSpecial(w *Workspace, line string) bool {
 	}
 	if line == "reset" {
 		w.pkgs = nil
-		w.pkgs_notimport = nil
+		w.pkgsNotimport = nil
 		w.defs = nil
 		w.codes = nil
 		sourceDefaultDPC(w)
@@ -367,35 +367,35 @@ func execSpecial(w *Workspace, line string) bool {
 	return false
 }
 
-func removeByIndex(w *Workspace, cmd_args string) {
-	if len(cmd_args) == 0 {
+func removeByIndex(w *Workspace, cmdArgs string) {
+	if len(cmdArgs) == 0 {
 		fmt.Println("Error: no item specified for remove")
 		return
 	}
 
-	item_type := cmd_args[0]
-	item_list_len := map[byte]int{
+	itemType := cmdArgs[0]
+	itemListLen := map[byte]int{
 		'd': len(w.defs) + 1,
-		'p': len(w.pkgs) + len(w.pkgs_notimport) + 1,
+		'p': len(w.pkgs) + len(w.pkgsNotimport) + 1,
 		'c': len(w.codes) + 1,
-	}[item_type] - 1
+	}[itemType] - 1
 
-	if item_list_len == -1 {
-		fmt.Printf("Error: invalid item type '%c'\n", item_type)
+	if itemListLen == -1 {
+		fmt.Printf("Error: invalid item type '%c'\n", itemType)
 		return
 	}
-	if item_list_len == 0 {
-		fmt.Printf("Error: no more '%c' to remove\n", item_type)
+	if itemListLen == 0 {
+		fmt.Printf("Error: no more '%c' to remove\n", itemType)
 		return
 	}
-	items_to_remove := getIndices(item_list_len, cmd_args[1:])
+	itemsToRemove := getIndices(itemListLen, cmdArgs[1:])
 
-	switch item_type {
+	switch itemType {
 	case 'd':
-		removeSlice(&w.defs, items_to_remove)
+		removeSlice(&w.defs, itemsToRemove)
 	case 'p':
 		items4import, items4notimport := []bool{}, []bool{}
-		for pos, v := range items_to_remove {
+		for pos, v := range itemsToRemove {
 			if pos < len(w.pkgs) {
 				items4import = append(items4import, v)
 			} else {
@@ -403,23 +403,23 @@ func removeByIndex(w *Workspace, cmd_args string) {
 			}
 		}
 		removeSlice(&w.pkgs, items4import)
-		removeSlice(&w.pkgs_notimport, items4notimport)
+		removeSlice(&w.pkgsNotimport, items4notimport)
 	case 'c':
-		removeSlice(&w.codes, items_to_remove)
+		removeSlice(&w.codes, itemsToRemove)
 	}
 }
 
-func getIndices(item_list_len int, cmd_args string) []bool {
-	items_to_remove := make([]bool, item_list_len)
+func getIndices(itemListLen int, cmdArgs string) []bool {
+	itemsToRemove := make([]bool, itemListLen)
 
-	cmd_args = strings.TrimSpace(cmd_args)
-	if len(cmd_args) == 0 {
-		items_to_remove[item_list_len-1] = true
-		return items_to_remove
+	cmdArgs = strings.TrimSpace(cmdArgs)
+	if len(cmdArgs) == 0 {
+		itemsToRemove[itemListLen-1] = true
+		return itemsToRemove
 	}
 
-	item_indices := []string{}
-	for _, vi := range strings.Split(cmd_args, ",") {
+	itemIndices := []string{}
+	for _, vi := range strings.Split(cmdArgs, ",") {
 		if vj := strings.Split(vi, "-"); len(vj) == 2 {
 			i, err := strconv.Atoi(vj[0])
 			if err != nil {
@@ -432,30 +432,30 @@ func getIndices(item_list_len int, cmd_args string) []bool {
 				continue
 			}
 			for k := i; k <= j; k++ {
-				item_indices = append(item_indices, strconv.Itoa(k))
+				itemIndices = append(itemIndices, strconv.Itoa(k))
 			}
 		} else {
-			item_indices = append(item_indices, vi)
+			itemIndices = append(itemIndices, vi)
 		}
 	}
 
-	for _, item_index_str := range item_indices {
-		if item_index_str == "" {
+	for _, itemIndexStr := range itemIndices {
+		if itemIndexStr == "" {
 			continue
 		}
-		item_index, err := strconv.Atoi(item_index_str)
+		itemIndex, err := strconv.Atoi(itemIndexStr)
 		if err != nil {
-			fmt.Printf("Error: %s not integer\n", item_index_str)
+			fmt.Printf("Error: %s not integer\n", itemIndexStr)
 			continue
 		}
-		if item_index < 0 || item_index >= item_list_len {
-			fmt.Printf("Error: %d out of range\n", item_index)
+		if itemIndex < 0 || itemIndex >= itemListLen {
+			fmt.Printf("Error: %d out of range\n", itemIndex)
 			continue
 		}
-		items_to_remove[item_index] = true
+		itemsToRemove[itemIndex] = true
 	}
 
-	return items_to_remove
+	return itemsToRemove
 }
 
 func removeSlice(ps interface{}, removes []bool) {
@@ -503,11 +503,11 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 		}
 	}
 
-	bkup_pkgs := append([]interface{}(nil), w.pkgs...)
-	bkup_pkgs_notimport := append([]interface{}(nil), w.pkgs_notimport...)
-	bkup_codes := append([]interface{}(nil), w.codes...)
-	bkup_defs := append([]interface{}(nil), w.defs...)
-	bkup_files := w.files
+	bkupPkgs := append([]interface{}(nil), w.pkgs...)
+	bkupPkgsNotimport := append([]interface{}(nil), w.pkgsNotimport...)
+	bkupCodes := append([]interface{}(nil), w.codes...)
+	bkupDefs := append([]interface{}(nil), w.defs...)
+	bkupFiles := w.files
 
 	switch v := tree.(type) {
 	case []ast.Stmt:
@@ -515,15 +515,15 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 			pos = len(w.codes)
 		}
 		for i := len(v) - 1; i >= 0; i-- {
-			if v_i, ok := v[i].(*ast.AssignStmt); ok {
-				if v_i.Tok == token.DEFINE {
-					for _, name_i := range v_i.Lhs {
-						str_i := new(bytes.Buffer)
-						printer.Fprint(str_i, w.files, name_i)
-						if str_i.String() == "_" {
+			if vI, ok := v[i].(*ast.AssignStmt); ok {
+				if vI.Tok == token.DEFINE {
+					for _, nameI := range vI.Lhs {
+						strI := new(bytes.Buffer)
+						printer.Fprint(strI, w.files, nameI)
+						if strI.String() == "_" {
 							continue
 						}
-						tree, _ := parseStmtList(w.files, "gop", "_ = "+str_i.String())
+						tree, _ := parseStmtList(w.files, "gop", "_ = "+strI.String())
 						w.codes = append(w.codes, nil)
 						copy(w.codes[pos+1:], w.codes[pos:])
 						w.codes[pos] = tree[0]
@@ -539,16 +539,16 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 			pos = len(w.defs)
 		}
 		for i := len(v) - 1; i >= 0; i-- {
-			if v_i, ok := v[i].(*ast.GenDecl); ok {
-				if v_i.Tok == token.IMPORT {
-					for _, spec := range v_i.Specs {
+			if vI, ok := v[i].(*ast.GenDecl); ok {
+				if vI.Tok == token.IMPORT {
+					for _, spec := range vI.Specs {
 						name := spec.(*ast.ImportSpec).Name.String()
 						value := spec.(*ast.ImportSpec).Path.Value
 						if func() bool {
 							for _, pkg := range w.pkgs {
-								v_j := pkg.(*ast.GenDecl).Specs[0].(*ast.ImportSpec)
-								if v_j.Path.Value == value &&
-									v_j.Name.String() == name {
+								vJ := pkg.(*ast.GenDecl).Specs[0].(*ast.ImportSpec)
+								if vJ.Path.Value == value &&
+									vJ.Name.String() == name {
 									return true
 								}
 							}
@@ -557,10 +557,10 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 							continue
 						}
 						if func() bool {
-							for _, pkg := range w.pkgs_notimport {
-								v_j := pkg.(*ast.GenDecl).Specs[0].(*ast.ImportSpec)
-								if v_j.Path.Value == value &&
-									v_j.Name.String() == name {
+							for _, pkg := range w.pkgsNotimport {
+								vJ := pkg.(*ast.GenDecl).Specs[0].(*ast.ImportSpec)
+								if vJ.Path.Value == value &&
+									vJ.Name.String() == name {
 									return true
 								}
 							}
@@ -602,11 +602,11 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 			name = "<nil>"
 		}
 		for pos, pkg := range w.pkgs {
-			v_j := pkg.(*ast.GenDecl).Specs[0].(*ast.ImportSpec)
-			if v_j.Path.Value == value &&
-				v_j.Name.String() == name {
+			vJ := pkg.(*ast.GenDecl).Specs[0].(*ast.ImportSpec)
+			if vJ.Path.Value == value &&
+				vJ.Name.String() == name {
 				w.pkgs = append(w.pkgs[:pos], w.pkgs[pos+1:]...)
-				w.pkgs_notimport = append(w.pkgs_notimport, pkg)
+				w.pkgsNotimport = append(w.pkgsNotimport, pkg)
 				break
 			}
 		}
@@ -614,11 +614,11 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 
 	for _, arr := range regexp.MustCompile(`undefined: (.+)`).FindAllStringSubmatch(err.Error(), -1) {
 		name := arr[1]
-		for pos, pkg := range w.pkgs_notimport {
-			v_j := pkg.(*ast.GenDecl).Specs[0].(*ast.ImportSpec)
-			if v_j.Name.String() == name ||
-				regexp.MustCompile(`["|/]`+name+`"`).MatchString(v_j.Path.Value) {
-				w.pkgs_notimport = append(w.pkgs_notimport[:pos], w.pkgs_notimport[pos+1:]...)
+		for pos, pkg := range w.pkgsNotimport {
+			vJ := pkg.(*ast.GenDecl).Specs[0].(*ast.ImportSpec)
+			if vJ.Name.String() == name ||
+				regexp.MustCompile(`["|/]`+name+`"`).MatchString(vJ.Path.Value) {
+				w.pkgsNotimport = append(w.pkgsNotimport[:pos], w.pkgsNotimport[pos+1:]...)
 				w.pkgs = append(w.pkgs, pkg)
 				break
 			}
@@ -640,11 +640,11 @@ run:
 	return
 
 restore:
-	w.pkgs = bkup_pkgs
-	w.pkgs_notimport = bkup_pkgs_notimport
-	w.codes = bkup_codes
-	w.defs = bkup_defs
-	w.files = bkup_files
+	w.pkgs = bkupPkgs
+	w.pkgsNotimport = bkupPkgsNotimport
+	w.codes = bkupCodes
+	w.defs = bkupDefs
+	w.files = bkupFiles
 	return
 }
 
@@ -669,9 +669,9 @@ func parseGo4import(w *Workspace, line string) (notComplete bool, err error) {
 		}
 	case []ast.Decl:
 		for _, e := range v {
-			if v_i, ok := e.(*ast.GenDecl); ok {
-				if v_i.Tok == token.IMPORT {
-					for _, spec := range v_i.Specs {
+			if vI, ok := e.(*ast.GenDecl); ok {
+				if vI.Tok == token.IMPORT {
+					for _, spec := range vI.Specs {
 						name := spec.(*ast.ImportSpec).Name.String()
 						value := spec.(*ast.ImportSpec).Path.Value
 						var tree []ast.Decl
@@ -688,7 +688,7 @@ func parseGo4import(w *Workspace, line string) (notComplete bool, err error) {
 			w.defs = append(w.defs, e)
 		}
 	default:
-		err = errors.New("Fatal error: Unknown tree type.")
+		err = errors.New("fatal error: Unknown tree type")
 		return
 	}
 
@@ -720,11 +720,11 @@ func dispatch(w *Workspace, line string) (notComplete bool, err error) {
 		fmt.Println("\tlist\ttmpl list")
 		fmt.Println("\targ\tset or get command-line argument")
 	case '-':
-		cmd_args := strings.TrimSpace(line[1:])
-		removeByIndex(w, cmd_args)
+		cmdArgs := strings.TrimSpace(line[1:])
+		removeByIndex(w, cmdArgs)
 	case '!':
-		cmd_args := strings.TrimSpace(line[1:])
-		if cmd_args == "!" {
+		cmdArgs := strings.TrimSpace(line[1:])
+		if cmdArgs == "!" {
 			fmt.Println(w.source(true, true, true))
 		} else {
 			fmt.Println(w.source(true, false, true))
