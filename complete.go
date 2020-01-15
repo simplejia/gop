@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"go/build"
 
@@ -134,6 +135,10 @@ func (w *Workspace) completeWord(line string, pos int) (string, []string, string
 				}
 			}
 		}
+	}
+
+	if pos == 0 || unicode.IsSpace(rune(line[pos-1])) {
+		return "", nil, ""
 	}
 
 	if gocode.Available() == false {
