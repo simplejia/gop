@@ -509,6 +509,8 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 	bkupDefs := append([]interface{}(nil), w.defs...)
 	bkupFiles := w.files
 
+	var isCodeDefine bool
+
 	switch v := tree.(type) {
 	case []ast.Stmt:
 		if pos > len(w.codes) || pos < 0 {
@@ -529,6 +531,7 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 						w.codes[pos] = tree[0]
 					}
 				}
+				isCodeDefine = true
 			}
 			w.codes = append(w.codes, nil)
 			copy(w.codes[pos+1:], w.codes[pos:])
@@ -575,6 +578,7 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 							tree, _ = parseDeclList(w.files, "gop", "import "+name+" "+value)
 						}
 						w.pkgs = append(w.pkgs, tree[0])
+						isCodeDefine = true
 					}
 					continue
 				}
@@ -583,20 +587,28 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 			w.defs = append(w.defs, nil)
 			copy(w.defs[pos+1:], w.defs[pos:])
 			w.defs[pos] = v[i]
+			isCodeDefine = true
 		}
 	default:
 		err = errors.New("Fatal error: Unknown tree type.")
 		return
 	}
 
-	var hasOutput bool
+	var (
+		hasOutput bool
+		matches   [][]string
+	)
 
 	err = compile(w)
 	if err == nil {
 		goto run
 	}
 
-	for _, arr := range regexp.MustCompile(`imported and not used: (".+?")( as (.+))?`).FindAllStringSubmatch(err.Error(), -1) {
+	matches = regexp.MustCompile(`imported and not used: (".+?")( as (.+))?`).FindAllStringSubmatch(err.Error(), -1)
+	if len(matches) == 0 {
+		matches = regexp.MustCompile(`(".+?") imported( as (.+))? and not used`).FindAllStringSubmatch(err.Error(), -1)
+	}
+	for _, arr := range matches {
 		name, value := arr[3], arr[1]
 		if name == "" {
 			name = "<nil>"
@@ -634,7 +646,7 @@ func parseGo(w *Workspace, line string) (notComplete bool, err error) {
 
 run:
 	hasOutput, err = run(w)
-	if err != nil || hasOutput {
+	if err != nil || (!isCodeDefine && hasOutput) {
 		goto restore
 	}
 	return
